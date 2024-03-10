@@ -1,0 +1,153 @@
+---
+title: "Assignment 2 - Logistic Regression"
+author: "Sri Vidya Battula"
+date: "11 November 2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Assignment 2
+
+For this analysis we will be using churn data. The dataset is stored as `churn_data.rda` which can be loaded in by running the below command if the file is located in your working directory or else by accessing the file through file->open file
+
+```{r Load Data 2}
+load("churn_data.rda") # Load churn dataset
+```
+
+We can view a summary of this dataset by running `summary()`:
+
+```{r}
+summary(churn_data)
+```
+
+The variables we have are:
+
+* Gender - Whether the customer is a male or a female
+* SeniorCitizen - Whether the customer is a senior citizen or not (1,0)
+* Partner - Whether the customer has a partner or nor (Yes, No)
+* Dependents - Whether the customer has dependents or not (Yes, No)
+* tenure - Number of months the customer has stayed with the company
+* PhoneService - Whether the customer has a phone service of no (Yes, No)
+* MultipleLines - Whether the customer has multiple lines or not (Yes, No, No phone service)
+* InternetService - Customer's internet service provider (DSL, Fiber optic, No)
+* OnlineSecurity - Whether the customer has online security or not (Yes, No, No internet service)
+* OnlineBackup - Whether the customer has online backup or not (Yes, No, No internet service)
+* DeviceProtection - Whether the customer has tech support or not (Yes, No, No internet service)
+* StreamingTV - Whether the customer has streaming TV or not (Yes, No, No internet service)
+* StreamingMovies - Whether the customer has streaming movies or not (Yes, No, No internet service)
+* Contract - The contract term of the customer (Month-to-month, One year, Two year)
+* PaperlessBilling - Whether the customer has paperless billing or not (Yes, No)
+* PaymentMethod - The customer's payment method (Electronic CHECK, Mailed check, Bank transfer (automatic), Credit card (automatic))
+* MonthlyCharges - The amount charged to the customer monthly
+* TotalCharges - The total amount charged to the customer
+* Churn - Whether the customer churned or not (1 = Yes or 0 = No)
+
+
+The response variable for this dataset is `Churn`:
+
+```{r}
+summary(as.factor(churn_data$Churn))
+```
+
+
+For the assignment please carry out the following tasks/answer the following questions: (12 Points)
+
+
+* 1 - Create at least two visualizations potentially revealing factors with predictive power (2 Points)
+```{r}
+library(ggplot2)
+
+ggplot(data = churn_data, aes(x = Contract, fill = factor(Churn))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Churn by Contract Type",
+       x = "Contract Type",
+       y = "Count",
+       fill = "Churn") +
+  theme_minimal()
+```
+```{r}
+ggplot(churn_data, aes( y = tenure, x = PaymentMethod, fill = Churn)) +
+   geom_boxplot() + 
+    theme_bw() + 
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), 
+         panel.border = element_blank(),
+         panel.background = element_blank()) + 
+   labs(x = "PaymentMethod", title = "PaymentMethods",
+        fill = "Churn") 
+```
+
+
+* 2 - Fit a logistic regression model to the data. (Remember you can use `resp ~.,` to include all explanatory variables in the model) (2 Points)
+```{r}
+model_1 <- glm(Churn~.,family = binomial, data= churn_data) 
+summary(model_1)
+```
+
+* 3 - What features are significant in your logistic regression model? (1 Point)
+
+Answer: The features that are significant in my logistic regression model are tenure, ContractOne year, ContractTwo year and TotalCharges.
+
+
+* 4 - What is the AIC of your logistic regression model?  (1 Point)
+
+Answer: The AIC of my logistic regression is 5874.3
+
+* 5 - Add an interaction term to the logistic regression model? (1 Point)
+
+```{r}
+model_with_interaction <- glm(Churn ~ InternetService + OnlineSecurity + InternetService:OnlineSecurity, family = binomial, data = churn_data)
+summary(model_with_interaction)
+```
+
+
+* 6 - Does the addition of the interaction term increase or decrease the AIC? What is the new AIC for the model? (1 Point)
+
+Answer: The interaction term increases the AIC. The new AIC of the model is 7033.2
+
+* 7 - Fit a lasso logistic regression model to the data. (1 Point)
+
+```{r}
+library(glmnet)
+churn_data[, c(5,18,19)] <- scale(churn_data[, c(5,18,19)])
+x <- model.matrix(Churn~. - 1, data = churn_data)
+y <- churn_data$Churn
+
+y <- as.numeric(as.factor(churn_data$Churn)) - 1
+
+lasso_fit <- glmnet(x, y, alpha = 1, family = "binomial")
+
+lambda_seq <- seq(from = 0.1, to = 10, by = 0.1)
+
+cv.lasso <- cv.glmnet(x = x, 
+                 y = churn_data$Churn, 
+                 alpha = 1, 
+                 family = "binomial", 
+                 lambda = lambda_seq, 
+                 nfolds = 10)
+best_lam <- cv.lasso$lambda.1se
+best_lam
+
+lasso_fit_final <- glmnet(x = x, 
+                    y = churn_data$Churn, 
+                    alpha = 1, 
+                    family = "binomial", 
+                    lambda = best_lam) 
+```
+
+* 8 - Which coefficients were non-zero in the lasso model? Were they positive or negative? What does this imply? (1 Point)
+
+```{r}
+coef(lasso_fit_final)
+```
+Answer: The non-zero coefficients are for the features tenure, InternetServiceFiber optic and PaymentMethodElectronic check. The signs of the non-zero coefficients indicate the kind of effect. If it is positive then an increase implies an increase in the response variable as well and if it is negative then an increase implies a decrease in response variable. 
+
+2 Points for analysis decisions and code quality.
+
+Please submit an an R-markdown document with the answers, optionally you can submit an R-script with the code used for your analysis and a document answering the specific questions, you can use word, pdf etc.
+
+Assignments can be submitted via Canvas or by email to mbarron2@nd.edu. 
+

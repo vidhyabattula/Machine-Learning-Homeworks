@@ -1,0 +1,196 @@
+---
+title: "Linear Regression Assignment"
+author: "Sri Vidya Battula"
+date: "07/11/2023"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Set Up
+
+```{r}
+load("nba_data.rda") # Load data
+```
+
+
+The dataset we are using contains statistics on NBA games from 2010 to 2021, the features in the data are:
+
+The statistics calculated are:
+
+* fgm - Field goals made
+* fga - Field goals attempted
+* fg3m - 3 point shots made
+* fg3a - 3 point shots attempted
+* fg2m - 2 point shots made
+* fg2a - 2 point shots attempted
+* ftm - Free throws made
+* fta - Free throws attempted
+* oreb - Offensive rebounds
+* dreb - Defensive rebounds
+* treb - Total rebounds
+* ast - Assists
+* stl - Steals
+* blk - Blocks
+* tov - Turnovers
+* pf - Personal fouls
+* pts - Points scored
+* pctfg - Field goal percentage
+* pctfg2 - 2 point field goal percentage
+* pctfg3 - 3 point field goal percentage
+* pctft - Free throw percentage
+
+These are calculated for the different aspects of the match-up denoted by the following adjustments to the variable names:
+
+* _1_off - Offensive stats for team 1 in previous games
+* _1_def - Defensive stats for team 1 in previous games (That is stats from team 1's opponents)
+* _2_off - Offensive stats for team 2 in previous games
+* _2_def - Defensive stats for team 2 in previous games (That is stats from team 2's opponents)
+
+There is also an ELO rating function which can be used to provide a ranking of the teams:
+
+https://medium.com/purple-theory/what-is-elo-rating-c4eb7a9061e0
+
+The objective of our analysis is to determine the key factors involved in winning NBA games, so we will use point differential as our response variable.
+
+```{r}
+# Create response variable
+nba_data$point_diff <- nba_data$team_1_points - nba_data$team_2_points
+```
+
+Before running the model we want to drop all of the unique identifiers for the games and the points used to calculate the differential:
+
+```{r}
+# Drop columns 
+nba_model <- nba_data[,c(8:91, 94:96)]
+```
+
+
+# Assignment
+
+Please complete the following tasks and answer the following questions:
+
+
+* 1 - Create two visualizations which may reveal interesting relationships in the dataset. Describe what you see in the visualization. (2 Points) 
+
+```{r}
+log_goals_made <- log(nba_model$fgm_1_off+1)
+
+library(ggplot2)
+
+my_plot1 <- ggplot(nba_model, aes(x=fga_1_off, y=fgm_1_off)) +
+  geom_point(aes(color=fga_1_off), color = "purple") +
+  geom_smooth(method = "lm") + 
+  labs(title="Field Goals Attempted vs Made",
+       x="Field Goals Attempted",
+       y="Field Goals Made") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())
+
+my_plot1 # Generate plot
+```
+Answer: The relationship between field goals made and field goals attempted of team 1 offense, proves to be a positive relationship. It indicates that the more number of times a goal is attempted the more likely it is to happen. 
+
+```{r}
+my_plot2 <- ggplot(nba_model, aes(x=fga_2_off, y=ftm_2_off)) +
+  geom_point(aes(color=fga_1_off), color = "green") +
+  geom_smooth(method = "lm") + 
+  labs(title="Field Goals Attempted vs Made",
+       x="Field Goals Attempted",
+       y="Field Goals Made") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())
+
+my_plot2 # Generate plot
+```
+Answer: The relationship between field goals made and field goals attempted of team 2 offense, proves to be a negative relationship. It indicates that the more attempts you make, the less likely you are to score a goal. We really need to look into the efforts/practice of team 2.
+
+* 2 - Run a linear regression model on the dataset using `point_diff` as the response variable and all other variables in the model data as explanatory variables. (1 Point)
+
+```{r}
+lm_1 <- lm(point_diff~.,
+            data = nba_model)
+summary(lm_1)
+```
+
+
+
+* 3 - What features in the model were significant (At 0.1% level)? Do these variables have a positive or negative effect on a teams change of winning a game? (1 Point)
+
+Answer: The features in the model that are significant at 0.1% are, dreb_1_off(+ve), stl_1_off(+ve), tov_1_off(-ve), ast_1_def(-ve), ast_2_def(+ve), elo_2(-ve), and elo_1(+ve). 
+
+The variables that have a positive impact on a teams change of winning a game are:
+dreb_1_off
+stl_1_off
+ast_2_def
+elo_1
+
+The variables that have a negative impact on a teams change of winning a game are:
+tov_1_off
+ast_1_def
+elo_2
+
+
+* 4 - Visualize two potential interaction terms and their relationship with the response variable. Are these interaction terms likely to have a significant relationship with the response variable? (2 Points)
+
+```{r}
+my_plot3 <- ggplot(nba_model, aes(x=point_diff, y=fgm_1_off, color=cut(fgm_2_off, breaks = 3))) +
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  labs(title="Interaction with response",
+       x="Points Difference",
+       y="Field Goals Made offense") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())
+
+my_plot3 # Generate plot
+```
+Answer: The interaction terms that I used show a slight positive relation with the response variable. 
+
+
+
+
+```{r}
+my_plot4 <- ggplot(nba_model, aes(x=point_diff, y=pctfg_2_off, color=cut(pctfg_2_def, breaks = 3))) +
+  geom_point() +
+  geom_smooth(method = "lm") + 
+  labs(title="Interaction with response",
+       x="Points Difference",
+       y="Field Goals Percentage offense") +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())
+
+my_plot4 # Generate plot
+```
+Answer: The other interaction term that I used, show a slightly negative regression line/relationship with the response variable. 
+
+
+* 5 - Fit a linear regression model with the two interaction terms included. (1 Point)
+
+```{r}
+lm_interaction_terms <- lm(point_diff~ . +fgm_1_off*fgm_2_off + pctfg_2_off*pctfg_2_def, data = nba_model)
+summary(lm_interaction_terms)
+
+```
+
+
+* 6 - How has the inclusion of the interaction terms affected the coefficients in the model? How has the inclusion of interaction terms affected the model fit? (1 Point)
+
+The inclusion of the interaction terms has not really modified my R^2 value. The value remains same, i.e at 15.7%. The interaction terms I used, are not at all significant in any way. They do not display any significance level.The terms that were significant earlier also haven't changed. They are still significant. Their negative and positive effects have also not changed one bit. So, overall I would like to state that including the interaction terms did not really affect anything in any way.  
+
+
+2 Points for code quality and analysis decisions.
